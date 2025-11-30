@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RENDER AURA | Future of Visuals</title>
+  <meta name="description" content="Render Aura — Mumbai-based 3D animation, VFX & motion graphics studio. Cinematic visuals for brands and agencies." />
+  <meta name="theme-color" content="#050505" />
+  <link rel="icon" href="/favicon.ico" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root { --neon-blue: #00f3ff; --neon-purple: #bc13fe; --deep-black: #050505; }
+    html,body{height:100%;}
+    body { background-color: var(--deep-black); color: white; font-family: 'Space Grotesk', sans-serif; overflow-x: hidden; margin: 0; }
+    @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+    ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #000; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; } ::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
+    #canvas-container { position: fixed; inset: 0; width:100%; height:100vh; z-index: -1; opacity: 0.6; pointer-events: none; }
+    .noise-overlay { position: fixed; inset:0; pointer-events:none; z-index:9998; opacity:0.05; background: url('https://grainy-gradients.vercel.app/noise.svg'); }
+    @media (pointer: fine) { body { cursor: none; } .cursor-dot, .cursor-outline { position: fixed; top:0; left:0; transform: translate(-50%,-50%); border-radius:50%; z-index:9999; pointer-events:none; } .cursor-dot { width:8px; height:8px; background-color:var(--neon-blue); } .cursor-outline { width:40px; height:40px; border:1px solid rgba(255,255,255,0.5); transition: width .15s, height .15s, background-color .15s, border-color .15s; } .cursor-outline.cursor-hover { width:80px !important; height:80px !important; background-color: rgba(0,243,255,0.08) !important; border-color: var(--neon-blue) !important; } }
+    .glass-card { background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border:1px solid rgba(255,255,255,0.05); transition: all .4s ease; }
+    .glass-card:hover { border-color: var(--neon-purple); transform: translateY(-5px); box-shadow: 0 0 30px rgba(188,19,254,0.2); }
+    #chatbot-button { position: fixed; bottom: 30px; right: 30px; width:60px; height:60px; background: var(--neon-blue); color: var(--deep-black); border-radius:50%; box-shadow:0 0 30px var(--neon-blue); z-index:1000; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    #chatbot-button:hover { transform: scale(1.05); }
+    #chatbot-modal { position: fixed; bottom: 100px; right: 30px; width: 90vw; max-width: 400px; height: 60vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(20px); border:1px solid var(--neon-blue); border-radius:1rem; box-shadow:0 0 50px rgba(0,243,255,0.5); z-index:999; display:none; flex-direction:column; overflow:hidden; }
+    #chat-messages { flex-grow:1; padding:1rem; overflow-y:auto; display:flex; flex-direction:column; gap:1rem; }
+    .message-box { max-width:85%; padding:.75rem; border-radius:.75rem; line-height:1.4; }
+    .aura-message { background: rgba(188,19,254,0.1); border-left:2px solid var(--neon-purple); align-self:flex-start; }
+    .user-message { background: rgba(0,243,255,0.1); border-right:2px solid var(--neon-blue); align-self:flex-end; }
+    @media (max-width:767px){ #chatbot-modal{ top:10vh; left:10px; right:10px; width:auto; max-width:none; height:80vh; bottom:10vh; } #chatbot-button{ bottom:20px; right:20px; } }
+    #loader { position: fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; background: linear-gradient(180deg, rgba(5,5,5,1), rgba(5,5,5,0.98)); z-index:2000; }
+    .loader-bar { width:0%; height:2px; background:var(--neon-blue); transition: width .5s; }
+  </style>
+</head>
+<body class="antialiased">
+  <div class="loader" id="loader" aria-hidden="false">
+    <h1 class="text-4xl tracking-widest font-bold text-white">INITIALIZING CORE</h1>
+    <div style="width:256px; background:#111; height:2px; overflow:hidden;">
+      <div class="loader-bar" id="loader-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+  </div>
+  <div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
+  <div class="cursor-outline" id="cursor-outline" aria-hidden="true"></div>
+  <div class="noise-overlay" aria-hidden="true"></div>
+  <div id="canvas-container" aria-hidden="true"></div>
+  <nav class="fixed top-0 w-full p-6 flex justify-between items-center z-50 mix-blend-difference">
+    <a href="#main" class="text-2xl font-bold tracking-tighter hover-trigger" id="logo">RENDER AURA<span class="text-cyan-400">.</span></a>
+    <div class="hidden md:flex gap-10 text-sm tracking-widest font-light">
+      <a href="#about" class="hover:text-cyan-400 transition-colors hover-trigger">STUDIO</a>
+      <a href="#services" class="hover:text-cyan-400 transition-colors hover-trigger">CAPABILITIES</a>
+      <a href="#portfolio" class="hover:text-cyan-400 transition-colors hover-trigger">PORTFOLIO</a>
+      <a href="#contact" class="hover:text-cyan-400 transition-colors hover-trigger">CONTACT</a>
+    </div>
+    <a href="#contact" class="start-project-btn border border-white/30 px-6 py-2 rounded-full hover:bg-white hover:text-black transition-all hover-trigger text-xs tracking-widest">START PROJECT</a>
+  </nav>
+  <main id="main" class="h-screen flex flex-col justify-center items-center relative z-10 px-4">
+    <p class="text-cyan-400 tracking-[0.5em] text-xs mb-4 hero-anim opacity-0">EST. 2025 // BORIVALI WEST, MUMBAI</p>
+    <h1 class="text-5xl md:text-8xl lg:text-9xl font-bold text-center leading-none hero-anim opacity-0 mix-blend-overlay">VISUALS<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600">ENGINEERED</span></h1>
+    <p class="mt-8 max-w-xl text-center text-gray-400 font-light leading-relaxed hero-anim opacity-0">RENDER AURA is a Mumbai-based creative production studio specializing in world-class 3D Animation, VFX, and Post-Production for brands and agencies, helping them achieve cinematic impact.</p>
+    <a href="#contact" class="mt-10 start-project-btn px-8 py-3 bg-cyan-500 text-black font-bold rounded-full hover:bg-cyan-400 transition-all hover-trigger text-sm tracking-widest hero-anim opacity-0">START YOUR PROJECT NOW</a>
+  </main>
+  <section id="about" class="min-h-screen py-24 px-6 md:px-24 flex items-center relative z-10">
+    <div class="grid md:grid-cols-2 gap-16 items-start w-full">
+      <div>
+        <h2 class="text-4xl md:text-6xl mb-8 scroll-reveal">THE <br><span class="text-purple-500">MISSION</span></h2>
+        <p class="text-gray-300 text-lg md:text-xl font-light scroll-reveal">Our mission is simple — <b class="text-white">Turn imagination into stunning visuals that create impact.</b></p>
+        <div class="founder-image-container mt-12 w-full max-w-sm scroll-reveal">
+          <img loading="lazy" src="uploaded:1764472545866.png-70f4e469-3374-4f26-a571-ab5de94f561f" alt="Portrait of Nikhil Varma, Founder of Render Aura" class="rounded-xl">
+        </div>
+      </div>
+      <div class="space-y-6 text-gray-300 text-lg md:text-xl font-light">
+        <h3 class="text-2xl font-bold mb-4 text-cyan-400 scroll-reveal">FOUNDER'S VISION</h3>
+        <p class="scroll-reveal">RENDER AURA was founded by <b class="text-white">Nikhil Varma</b>, a Mumbai-based Senior Designer with years of experience in 3D animation, VFX, and video production for TV ads, films, and agencies.</p>
+      </div>
+    </div>
+  </section>
+  <section id="services" class="min-h-screen py-24 px-6 relative z-10 bg-black/50 backdrop-blur-sm">
+    <div class="max-w-7xl mx-auto">
+      <h2 class="text-center text-4xl md:text-6xl font-bold mb-10 text-white scroll-reveal">WHAT WE DO</h2>
+    </div>
+  </section>
+  <section id="portfolio" class="py-24 px-6 relative z-10 bg-black/50 backdrop-blur-sm">
+    <div class="max-w-7xl mx-auto">
+      <h2 class="text-center text-4xl md:text-6xl font-bold mb-10 text-white scroll-reveal">OUR WORK</h2>
+      <div class="space-y-12">
+        <div class="glass-card p-4 rounded-xl hover-trigger scroll-reveal">
+          <h3 class="mt-4 text-2xl font-bold text-cyan-400 mb-4 text-center md:text-left">MAIN SHOWREEL 2025</h3>
+          <div class="relative overflow-hidden w-full rounded-lg" style="padding-bottom:56.25%;height:0;">
+            <iframe src="https://www.youtube.com/embed/WsYbZr2C98U?autoplay=0&controls=1&rel=0" title="Nikhil Varma | 3D Generalist Showreel 2025" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="absolute top-0 left-0 w-full h-full"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section id="contact" class="h-screen flex flex-col justify-center items-center relative z-10 px-4">
+    <h2 class="text-sm tracking-widest text-purple-500 mb-6">INITIATE COLLABORATION</h2>
+    <h1 class="text-5xl md:text-8xl font-bold text-center mb-10 hover:text-cyan-400 transition-colors cursor-pointer hover-trigger">LET'S RENDER<br>THE FUTURE</h1>
+    <a href="mailto:contact@renderaura.com" class="px-8 py-4 border border-white/20 rounded-full hover:bg-white hover:text-black transition-all hover-trigger tracking-widest text-sm">GET A QUOTE</a>
+    <footer class="absolute bottom-10 w-full text-center text-gray-600 text-xs tracking-widest">
+      <div class="flex justify-center gap-6 mb-3 text-lg text-gray-400">
+        <a href="https://www.instagram.com/reel/DJ_pxxBMsEz/" target="_blank" rel="noopener noreferrer" class="hover:text-cyan-400 transition-colors hover-trigger"><i class="fab fa-instagram"></i></a>
+        <a href="#" target="_blank" rel="noopener noreferrer" class="hover:text-cyan-400 transition-colors hover-trigger"><i class="fab fa-linkedin-in"></i></a>
+        <a href="https://youtu.be/WsYbZr2C98U" target="_blank" rel="noopener noreferrer" class="hover:text-cyan-400 transition-colors hover-trigger"><i class="fab fa-youtube"></i></a>
+      </div>
+      <p class="mb-1 text-gray-500">HEADQUARTERS: BORIVALI WEST, MUMBAI | SERVING PAN-INDIA & INTERNATIONALLY</p>
+      © 2025 RENDER AURA. ALL RIGHTS RESERVED. FOUNDER: NIKHIL VARMA.
+    </footer>
+  </section>
+  <div id="chatbot-modal" role="dialog" aria-modal="true" aria-labelledby="aura-title" style="display:none;">
+    <div class="p-4 flex justify-between items-center border-b border-cyan-400/20 bg-black/50">
+      <div class="flex items-center gap-2"><i class="fas fa-robot text-cyan-400"></i><h3 id="aura-title" class="text-white text-lg font-bold tracking-wider">Aura AI Assistant</h3></div>
+      <button id="chat-close" class="text-gray-400 hover:text-white transition-colors" aria-label="Close chat"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="chat-messages" aria-live="polite"><div class="message-box aura-message text-sm">Hello! I am Aura, the RENDER AURA AI Assistant. How can I assist you with 3D, VFX, or Motion Graphics today?</div></div>
+    <div class="p-4 border-t border-cyan-400/20 flex gap-2">
+      <input type="text" id="chat-input" placeholder="Ask Aura a question..." class="flex-grow bg-transparent border border-white/20 p-2 rounded-lg text-sm focus:border-cyan-400 outline-none" onkeydown="if(event.key === 'Enter') sendMessage()" aria-label="Ask Aura a question">
+      <button onclick="sendMessage()" id="send-btn" class="bg-cyan-500 text-black px-4 rounded-lg hover:bg-cyan-400 transition-colors" aria-label="Send message"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+  <div id="chatbot-button" onclick="toggleChatbot()" role="button" tabindex="0" aria-label="Open chat with Aura"><i class="fas fa-robot text-3xl"></i></div>
+
+  <script>
+    const SYSTEM_PROMPT = "You are the RENDER AURA AI Assistant, a professional, concise, and futuristic chatbot for a world-class 3D, VFX, and Motion Graphics studio based in Mumbai. Your name is 'Aura'. Answer questions about the studio's services, founder (Nikhil Varma), and location (Borivali West, Mumbai). Keep responses short (max 2-3 sentences) and highly professional. If asked for anything outside this scope or for creative ideas, gently redirect to contact the team or 'Start a Project'.";
+    let chatHistory = []; let isTyping = false;
+    const modal = document.getElementById('chatbot-modal'); const chatBtn = document.getElementById('chatbot-button'); const chatClose = document.getElementById('chat-close'); const chatInput = document.getElementById('chat-input');
+
+    function toggleChatbot(open) {
+      const isOpen = modal.style.display === 'flex';
+      if (typeof open === 'boolean') modal.style.display = open ? 'flex' : 'none'; else modal.style.display = isOpen ? 'none' : 'flex';
+      if (modal.style.display === 'flex') { setTimeout(()=>chatInput.focus(),50); document.body.style.overflow='hidden'; } else { document.body.style.overflow=''; chatBtn.focus(); }
+    }
+    chatBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' ') toggleChatbot(true); });
+    chatClose.addEventListener('click', ()=> toggleChatbot(false));
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') toggleChatbot(false); });
+
+    function createMessageElement(text, sender) {
+      const messagesDiv = document.getElementById('chat-messages');
+      const box = document.createElement('div');
+      box.classList.add('message-box', sender === 'user' ? 'user-message' : 'aura-message');
+      box.classList.add('text-sm'); box.innerText = text; messagesDiv.appendChild(box); messagesDiv.scrollTop = messagesDiv.scrollHeight; return box;
+    }
+
+    async function sendMessage() {
+      if (isTyping) return;
+      const text = chatInput.value.trim(); if (!text) return;
+      createMessageElement(text, 'user'); chatInput.value = ''; chatHistory.push({ role: 'user', parts: [{ text }] });
+      const typingIndicator = createMessageElement('Aura is typing...', 'aura'); isTyping = true; document.getElementById('send-btn').disabled = true;
+      try { const resp = await fetchWithRetry(); typingIndicator.remove(); if (resp && resp.text) { createMessageElement(resp.text, 'aura'); chatHistory.push({ role: 'model', parts: [{ text: resp.text }] }); } else { createMessageElement('Sorry, I could not connect to the core. Please try again.', 'aura'); } } catch (err) { console.error(err); typingIndicator.remove(); createMessageElement('My systems are offline. Please contact us directly for project inquiries.', 'aura'); } finally { isTyping = false; document.getElementById('send-btn').disabled = false; }
+    }
+
+    async function fetchWithRetry(maxRetries = 3) {
+      const payload = { history: chatHistory, system: SYSTEM_PROMPT };
+      for (let i=0;i<maxRetries;i++){ try { const r = await fetch('/.netlify/functions/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) }); if (!r.ok) throw new Error('Server responded '+r.status); const j = await r.json(); return { text: j.text }; } catch (err) { if (i === maxRetries-1) throw err; await new Promise(res => setTimeout(res, Math.pow(2,i)*500 + Math.random()*200)); } }
+    }
+
+    const cursorDot = document.getElementById('cursor-dot'); const cursorOutline = document.getElementById('cursor-outline');
+    if (cursorDot && cursorOutline) { window.addEventListener('mousemove', (e)=>{ const x=e.clientX, y=e.clientY; cursorDot.style.transform = `translate(${x}px, ${y}px)`; cursorOutline.style.transform = `translate(${x}px, ${y}px)`; }); document.querySelectorAll('.hover-trigger').forEach(el=>{ el.addEventListener('mouseenter', ()=> cursorOutline.classList.add('cursor-hover')); el.addEventListener('mouseleave', ()=> cursorOutline.classList.remove('cursor-hover')); }); }
+
+    function initThreeJS(){ const container=document.getElementById('canvas-container'); const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x050505,0.001); const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000); camera.position.z=20; const renderer=new THREE.WebGLRenderer({ alpha:true, antialias:true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2)); container.appendChild(renderer.domElement);
+      const isMobile = /Mobi|Android/i.test(navigator.userAgent); const count = isMobile ? 800 : 3000;
+      const geometry=new THREE.BufferGeometry(); const positions=new Float32Array(count*3); const colors=new Float32Array(count*3); const color1=new THREE.Color(0x00f3ff); const color2=new THREE.Color(0xbc13fe);
+      for(let i=0;i<count;i++){ const theta=Math.random()*Math.PI*2; const phi=Math.acos((Math.random()*2)-1); const radius=9+(Math.random()*1.5); const x=radius*Math.sin(phi)*Math.cos(theta); const y=radius*Math.sin(phi)*Math.sin(theta); const z=radius*Math.cos(phi); positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z; const mixedColor = Math.random()>0.5?color1:color2; colors[i*3]=mixedColor.r; colors[i*3+1]=mixedColor.g; colors[i*3+2]=mixedColor.b; }
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions,3)); geometry.setAttribute('color', new THREE.BufferAttribute(colors,3));
+      const material=new THREE.PointsMaterial({ size:0.15, vertexColors:true, transparent:true, opacity:0.8, blending: THREE.AdditiveBlending }); const particles=new THREE.Points(geometry, material); scene.add(particles);
+      let mouseX=0, mouseY=0, targetX=0, targetY=0; const windowHalfX=window.innerWidth/2, windowHalfY=window.innerHeight/2; document.addEventListener('mousemove', (e)=>{ mouseX=(e.clientX-windowHalfX); mouseY=(e.clientY-windowHalfY); });
+      const clock=new THREE.Clock(); const animate=()=>{ requestAnimationFrame(animate); const elapsedTime=clock.getElapsedTime(); targetX = mouseX * 0.001; targetY = mouseY * 0.001; particles.rotation.y += 0.05 * (targetX - particles.rotation.y); particles.rotation.x += 0.05 * (targetY - particles.rotation.x); particles.rotation.z += 0.002; const scale = 1 + Math.sin(elapsedTime * 0.5) * 0.05; particles.scale.set(scale, scale, scale); renderer.render(scene, camera); }; animate(); window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    window.addEventListener('load', ()=>{ initThreeJS(); const tl = gsap.timeline(); tl.to('#loader-bar',{ width:'100%', duration:1.5, ease:'power2.inOut'}) .to('#loader',{ y:'-100%', duration:1, ease:'power4.inOut', delay:0.2 }) .to('.hero-anim',{ y:0, opacity:1, stagger:0.2, duration:1, ease:'power3.out'}); gsap.registerPlugin(ScrollTrigger); gsap.utils.toArray('.scroll-reveal').forEach(el=>{ gsap.from(el, { scrollTrigger:{ trigger: el, start: 'top 80%', toggleActions:'play none none reverse' }, y:50, opacity:0, duration:1, ease:'power3.out' }); }); });
+  </script>
+</body>
+</html>
